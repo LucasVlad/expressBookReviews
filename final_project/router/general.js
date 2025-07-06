@@ -1,4 +1,5 @@
 const express = require("express");
+const axios = require("axios");
 let books = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
@@ -35,82 +36,102 @@ public_users.post("/register", (req, res) => {
 });
 
 // Get the book list available in the shop
-public_users.get("/", function (req, res) {
+public_users.get("/", async function (req, res) {
   try {
-    if (Object.keys(books).length === 0) {
-      return res.status(404).json({ message: "No books available" });
-    }
+    const getAllBooks = async () => {
+      return new Promise((resolve, reject) => {
+        if (Object.keys(books).length === 0) {
+          reject("No books available");
+        }
+        resolve(books);
+      });
+    };
 
-    return res.status(200).json(books);
+    const booksList = await getAllBooks();
+    return res.status(200).json(booksList);
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    return res.status(404).json({ message: error });
   }
 });
 
 // Get book details based on ISBN
-public_users.get("/isbn/:isbn", function (req, res) {
+public_users.get("/isbn/:isbn", async function (req, res) {
   try {
     const isbn = req.params.isbn;
 
-    if (books[isbn]) {
-      return res.status(200).json(books[isbn]);
-    } else {
-      return res
-        .status(404)
-        .json({ message: `Book with ISBN ${isbn} not found` });
-    }
+    const getBookByISBN = async (isbn) => {
+      return new Promise((resolve, reject) => {
+        const book = books[isbn];
+        if (book) {
+          resolve(book);
+        } else {
+          reject(`Book with ISBN ${isbn} not found`);
+        }
+      });
+    };
+
+    const bookDetails = await getBookByISBN(isbn);
+    return res.status(200).json(bookDetails);
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    return res.status(404).json({
+      message: error,
+    });
   }
 });
 
 // Get book details based on author
-public_users.get("/author/:author", function (req, res) {
+public_users.get("/author/:author", async function (req, res) {
   try {
     const author = req.params.author;
 
-    const authorBooks = Object.values(books).filter(
-      (book) => book.author.toLowerCase() === author.toLowerCase(),
-    );
+    const getBooksByAuthor = async (authorName) => {
+      return new Promise((resolve, reject) => {
+        const authorBooks = Object.values(books).filter(
+          (book) => book.author.toLowerCase() === authorName.toLowerCase(),
+        );
 
-    if (authorBooks.length > 0) {
-      return res.status(200).json(authorBooks);
-    } else {
-      return res
-        .status(404)
-        .json({ message: `No books found for author: ${author}` });
-    }
+        if (authorBooks.length > 0) {
+          resolve(authorBooks);
+        } else {
+          reject(`No books found for author: ${authorName}`);
+        }
+      });
+    };
+
+    const bookDetails = await getBooksByAuthor(author);
+    return res.status(200).json(bookDetails);
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    return res.status(404).json({
+      message: error,
+    });
   }
 });
 
 // Get all books based on title
-public_users.get("/title/:title", function (req, res) {
+public_users.get("/title/:title", async function (req, res) {
   try {
     const title = req.params.title;
 
-    const titleBooks = Object.values(books).filter((book) =>
-      book.title.toLowerCase().includes(title.toLowerCase()),
-    );
+    const getBooksByTitle = async (searchTitle) => {
+      return new Promise((resolve, reject) => {
+        const titleBooks = Object.values(books).filter((book) =>
+          book.title.toLowerCase().includes(searchTitle.toLowerCase()),
+        );
 
-    if (titleBooks.length > 0) {
-      return res.status(200).json(titleBooks);
-    } else {
-      return res
-        .status(404)
-        .json({ message: `No books found with title containing: ${title}` });
-    }
+        if (titleBooks.length > 0) {
+          resolve(titleBooks);
+        } else {
+          reject(`No books found with title containing: ${searchTitle}`);
+        }
+      });
+    };
+
+    const bookDetails = await getBooksByTitle(title);
+    return res.status(200).json(bookDetails);
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    return res.status(404).json({
+      message: error,
+    });
   }
 });
 
